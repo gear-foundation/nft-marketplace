@@ -1,0 +1,68 @@
+type Marketplace @entity {
+  id: ID!
+  collections: [Collection!]! @derivedFrom(field: "marketplace")
+  collectionTypes: [CollectionType!]! @derivedFrom(field: "marketplace")
+}
+
+type CollectionType @entity {
+  id: ID!
+  description: String!
+  type: String!
+  metaUrl: String!
+  metaStr: String!
+  marketplace: Marketplace!
+}
+
+type Collection @entity {
+  id: ID!
+  marketplace: Marketplace!
+  type: CollectionType!
+  admin: String!
+  name: String!
+  description: String!
+  userMintLimit: BigInt
+  tokensLimit: BigInt
+  collectionImage: String!
+  transferable: Boolean!
+  approvable: Boolean!
+  burnable: Boolean!
+  sellable: Boolean!
+  attandable: Boolean!
+  nfts: [Nft!]! @derivedFrom(field: "collection")
+  tags: [String!]!
+}
+
+type Nft @entity {
+  id: ID!
+  owner: String!
+  name: String!
+  description: String!
+  idInCollection: Int!
+  collection: Collection!
+  mediaUrl: String!
+  mintedAt: DateTime!
+  approvedAccount: String
+  onSale: Boolean!
+  transfers: [Transfer!]! @derivedFrom(field: "nft")
+  sales: [Sale!]! @derivedFrom(field: "nft")
+}
+
+type Transfer @entity {
+  id: ID!
+  nft: Nft!
+  from: String!
+  to: String!
+  timestamp: DateTime!
+  blockNumber: String!
+  txHash: String!
+}
+
+type Sale @entity {
+  id: ID!
+  nft: Nft!
+  owner: String!
+  price: BigInt!
+  timestamp: DateTime!
+  blockNumber: String!
+  isSold: Boolean!
+}

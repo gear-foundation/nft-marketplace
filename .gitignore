@@ -2,3 +2,4 @@
 /Cargo.lock
 .binpath
 .DS_Store
+.idea
