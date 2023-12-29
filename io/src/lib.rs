@@ -12,13 +12,26 @@ impl Metadata for NftMarketplaceMetadata {
     type State = InOut<StateQuery, StateReply>;
 }
 
+/// * gas_for_creation - gas needed to create the collection
+/// * gas_for_transfer_token - gas that is needed to transfer nft tokens (in case of sale, auction or offer)
+/// * gas_for_close_auction - gas which is needed to send a delayed message to close the auction
+/// (this action includes a transfer, so gas_for_close_auction must be greater than gas_for_transfer_token)
+/// * gas_for_delete_collection - gas that is needed to delete a collection 
+/// (a message is sent to the collection contract to see if the collection can be deleted)
+/// * gas_for_get_token_info - gas which is needed to get information from the collection about the token
+/// (used for sale, auction and offers)
+/// * time_between_create_collections - time between collection creation 
+/// (to avoid regular users from creating collections too often)
+/// * minimum_transfer_value - minimum allowable transfer value
+/// * ms_in_block - number of milliseconds in one block
+/// (this variable is needed to correctly calculate the time for the delayed message in the auction)
 #[derive(Encode, Decode, TypeInfo)]
 pub struct NftMarketplaceInit {
     pub gas_for_creation: u64,
-    pub gas_for_transfer_token: u64,
+    pub gas_for_transfer_token: u64, 
     pub gas_for_close_auction: u64,
     pub gas_for_delete_collection: u64,
-    pub gas_for_get_token_info: u64,
+    pub gas_for_get_token_info: u64, 
     pub time_between_create_collections: u64,
     pub minimum_transfer_value: u128,
     pub ms_in_block: u32,
@@ -122,9 +135,10 @@ pub enum NftMarketplaceEvent {
         token_id: u64,
     },
     NftSold {
-        current_owner: ActorId,
+        collection_address: ActorId,
         token_id: u64,
         price: u128,
+        current_owner: ActorId,
     },
     AuctionCreated {
         collection_address: ActorId,
@@ -212,6 +226,10 @@ pub struct State {
     pub config: Config,
 }
 
+/// * code_id - code_id is used to create a collection by that CodeId, 
+/// the admin should preload the NFT contract and specify in the marketplace so that regular users can use it
+/// * meta_link -  it is necessary to set a reference where the meta of this collection type will be stored for further interaction with the contract
+/// * type_description - description of this type of collection
 #[derive(Debug, Encode, Decode, TypeInfo, Clone)]
 pub struct CollectionInfo {
     pub code_id: CodeId,

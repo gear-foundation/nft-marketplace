@@ -14,7 +14,7 @@ use nft_io::{
 struct NftContract {
     pub tokens: HashMap<NftId, Nft>,
     pub owners: HashMap<ActorId, HashSet<NftId>>,
-    pub restriction_mint: HashMap<ActorId, u32>, // made in order to track the number of mint nft
+    pub restriction_mint: HashMap<ActorId, u32>, // made in order to track the number of mint!(not transfer) nft
     pub token_approvals: HashMap<NftId, ActorId>,
     pub config: Config,
     pub nonce: NftId,
@@ -308,6 +308,8 @@ impl NftContract {
         }
         Ok(())
     }
+
+    // Checking for sufficient mint value and sending the value to the creator
     fn payment_for_mint(&self) -> Result<(), NftError> {
         if self.config.payment_for_mint != 0 {
             if msg::value() != self.config.payment_for_mint {
@@ -320,6 +322,7 @@ impl NftContract {
 
         Ok(())
     }
+    // verification of approval
     fn can_approve(&self, token_id: &NftId) -> Result<(), NftError> {
         if self.token_approvals.contains_key(token_id) {
             return Err(NftError("Approve has already been issued".to_owned()));
@@ -334,6 +337,8 @@ impl NftContract {
 
         Ok(())
     }
+
+    // approval check
     fn check_approve(&self, user: &ActorId, token_id: &NftId) -> Result<(), NftError> {
         if let Some(approved_account) = self.token_approvals.get(token_id) {
             if approved_account != user {
@@ -342,11 +347,12 @@ impl NftContract {
                 ));
             }
         } else {
-            return Err(NftError("Target token_approvals is empty.".to_owned()));
+            return Err(NftError("Caller is not approved to perform transfer.".to_owned()));
         }
         Ok(())
     }
 
+    // doing all the checks to verify that the transfer can be made
     fn can_transfer(&self, from: &ActorId, to: &ActorId, token_id: &NftId) -> Result<(), NftError> {
         if let Some(nft) = self.tokens.get(token_id) {
             let owner = nft.owner;
@@ -354,6 +360,7 @@ impl NftContract {
                 return Err(NftError("NonFungibleToken: access denied".to_owned()));
             }
             let msg_src = msg::source();
+            // if the owner of the token does not match the sender of the message, then check the approval
             if owner != msg_src {
                 self.check_approve(&msg_src, token_id)?;
             }
@@ -409,17 +416,20 @@ extern "C" fn init() {
         );
     }
 
-    // made 10_000 so you can enter hundredths of a percent.
+    // made 10_000 so hundredths of a percent could be entered.
     if config.royalty > 10_000 {
         panic!("Royalty percent must be less than 100%");
     }
+    // can't be made sellable but not transferable.
     if config.transferable.is_none() && config.sellable.is_some() {
         panic!("Tokens must be transferable");
     }
+    // at least one image in the collection is a must have.
     assert!(
         !img_links_and_data.is_empty(),
         "There must be at least one link to create a collection"
     );
+    // сan't have zero copies of the nft.
     if img_links_and_data
         .iter()
         .any(|(_, img_data)| img_data.limit_copies.map_or(false, |limit| limit == 0))

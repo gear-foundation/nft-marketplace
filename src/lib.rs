@@ -12,16 +12,18 @@ mod payment;
 mod sale;
 
 type CollectionId = ActorId;
+type TokenId = u64;
+type Price = u128;
 
 #[derive(Default)]
 pub struct NftMarketplace {
     pub admins: Vec<ActorId>,
     pub collection_to_owner: HashMap<CollectionId, ActorId>,
-    pub time_creation: HashMap<CollectionId, u64>,
+    pub time_creation: HashMap<ActorId, u64>,
     pub type_collections: HashMap<String, CollectionInfo>,
-    pub sales: HashMap<(ActorId, u64), NftInfoForSale>,
-    pub auctions: HashMap<(ActorId, u64), Auction>,
-    pub offers: HashMap<Offer, u128>, // <Offer, price>
+    pub sales: HashMap<(CollectionId, TokenId), NftInfoForSale>,
+    pub auctions: HashMap<(CollectionId, TokenId), Auction>,
+    pub offers: HashMap<Offer, Price>,
     pub config: Config,
 }
 

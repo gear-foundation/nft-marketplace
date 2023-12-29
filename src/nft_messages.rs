@@ -73,14 +73,17 @@ pub async fn check_token_info(
         royalty,
     } = reply
     {
+        // nft should be sellable
         if !sellable {
             return Err(NftMarketplaceError("Nft is not sellable".to_owned()));
         }
+        // the owner must be the same as the one who wants to sell
         if token_owner != *msg_src {
             return Err(NftMarketplaceError(
                 "Only the owner of the token can perform this action.".to_owned(),
             ));
         }
+        // must be approved by the marketplace
         if let Some(approve_acc) = approval {
             if approve_acc != *address_marketplace {
                 return Err(NftMarketplaceError(
