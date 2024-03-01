@@ -1,6 +1,7 @@
 import { Link, useLocation, useMatch } from 'react-router-dom';
 
 import { Container, List } from '@/components';
+import { LoadingList } from '@/components/list/loading-list';
 import { ROUTE } from '@/consts';
 import { CollectionCard, NFTCard, Skeleton } from '@/features/collections';
 import CollectionCardSkeletonSVG from '@/features/collections/assets/collection-card-skeleton.svg?react';
@@ -55,21 +56,22 @@ function Lists() {
       </header>
 
       {match ? (
-        <List
-          items={isNFTsQueryReady ? nfts : NFT_SKELETONS}
+        <LoadingList
+          items={nfts}
           itemsPerRow={gridSize === GRID_SIZE.SMALL ? 4 : 3}
           emptyText="Mint NFTs"
-          renderItem={(nft, index) =>
-            nft ? (
-              <NFTCard key={nft.id} {...nft} />
-            ) : (
+          renderItem={(nft) => <NFTCard key={nft.id} {...nft} />}
+          skeleton={{
+            rowsCount: 2,
+            isVisible: !isNFTsQueryReady,
+            renderItem: (index) => (
               <li key={index}>
                 <Skeleton>
                   <NFTCardSkeletonSVG />
                 </Skeleton>
               </li>
-            )
-          }
+            ),
+          }}
         />
       ) : (
         <List
