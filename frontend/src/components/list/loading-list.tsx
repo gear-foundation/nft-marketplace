@@ -7,7 +7,9 @@ type Props<T> = {
   items: T[];
   itemsPerRow: number;
   emptyText: string;
+  isMoreItems: boolean;
   renderItem: (item: T, index: number) => ReactNode;
+  fetchItems: () => void;
 
   skeleton: {
     rowsCount: number;
@@ -16,20 +18,7 @@ type Props<T> = {
   };
 };
 
-function LoadingList<T>({ items, itemsPerRow, emptyText, renderItem, skeleton }: Props<T>) {
-  const itemsCount = items.length;
-  const isListVisible = Boolean(itemsCount) || skeleton.isVisible;
-
-  const renderItems = () => items.map((item, index) => renderItem(item, index));
-
-  const renderSkeletonItems = () => {
-    const lastRowRemainder = itemsCount % itemsPerRow;
-    const maxSkeletonsCount = itemsPerRow * skeleton.rowsCount;
-    const skeletonsCount = maxSkeletonsCount - lastRowRemainder;
-
-    return new Array(skeletonsCount).fill(null).map((_, index) => skeleton.renderItem(index));
-  };
-
+function Observer({ fetch }: { fetch: () => void }) {
   const observerRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
@@ -38,6 +27,7 @@ function LoadingList<T>({ items, itemsPerRow, emptyText, renderItem, skeleton }:
     const observer = new IntersectionObserver(([{ isIntersecting }]) => {
       if (!isIntersecting) return;
 
+      fetch();
       console.log('fetch');
     });
 
@@ -46,7 +36,21 @@ function LoadingList<T>({ items, itemsPerRow, emptyText, renderItem, skeleton }:
     return () => {
       observer.disconnect();
     };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  return <span ref={observerRef} />;
+}
+
+function LoadingList<T>({ items, itemsPerRow, emptyText, isMoreItems, renderItem, fetchItems, skeleton }: Props<T>) {
+  const itemsCount = items.length;
+  const isListVisible = Boolean(itemsCount) || skeleton.isVisible;
+
+  const renderItems = () => items.map((item, index) => renderItem(item, index));
+
+  const renderSkeletonItems = () =>
+    new Array(itemsPerRow * skeleton.rowsCount).fill(null).map((_, index) => skeleton.renderItem(index));
 
   return isListVisible ? (
     <div>
@@ -55,7 +59,7 @@ function LoadingList<T>({ items, itemsPerRow, emptyText, renderItem, skeleton }:
         {skeleton.isVisible && renderSkeletonItems()}
       </ul>
 
-      <span ref={observerRef} />
+      {isMoreItems && !skeleton.isVisible && <Observer fetch={fetchItems} />}
     </div>
   ) : (
     <div className={styles.notFound}>

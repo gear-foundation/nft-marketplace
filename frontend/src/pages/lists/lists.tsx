@@ -19,7 +19,6 @@ const TABS = [
 ];
 
 const COLLECTION_SKELETONS = new Array<null>(6).fill(null);
-const NFT_SKELETONS = new Array<null>(8).fill(null);
 
 function Lists() {
   const { pathname } = useLocation();
@@ -29,11 +28,11 @@ function Lists() {
   const { accountFilterValue, accountFilterAddress, setAccountFilterValue } = useAccountFilter();
 
   const { collections, isCollectionsQueryReady } = useCollections(accountFilterAddress);
-  const { nfts, isNFTsQueryReady } = useNFTs(accountFilterAddress);
+  const { nfts, isNFTsQueryReady, nftsCount, isMoreNFTs, fetchNFTs } = useNFTs(accountFilterAddress);
 
   const renderTabs = () =>
     TABS.map(({ to, text }, index) => {
-      const counter = [collections?.length, nfts?.length][index];
+      const counter = [collections?.length, nftsCount][index];
 
       return (
         <li key={to}>
@@ -61,6 +60,8 @@ function Lists() {
           itemsPerRow={gridSize === GRID_SIZE.SMALL ? 4 : 3}
           emptyText="Mint NFTs"
           renderItem={(nft) => <NFTCard key={nft.id} {...nft} />}
+          fetchItems={fetchNFTs}
+          isMoreItems={isMoreNFTs}
           skeleton={{
             rowsCount: 2,
             isVisible: !isNFTsQueryReady,
