@@ -1,24 +1,22 @@
 import { Link, useLocation, useMatch } from 'react-router-dom';
 
 import { Container, List } from '@/components';
-import { LoadingList } from '@/components/list/loading-list';
 import { ROUTE } from '@/consts';
 import { CollectionCard, NFTCard, Skeleton } from '@/features/collections';
 import CollectionCardSkeletonSVG from '@/features/collections/assets/collection-card-skeleton.svg?react';
 import NFTCardSkeletonSVG from '@/features/collections/assets/nft-card-skeleton.svg?react';
 import { AccountFilter, GridSize, useAccountFilter, useGridSize } from '@/features/lists';
 import { GRID_SIZE } from '@/features/lists/consts';
+import { usePaginationQuery } from '@/hooks';
 import { cx } from '@/utils';
 
-import { useCollections, useNFTs } from './hooks';
+import { COLLECTIONS_QUERY, NFTS_QUERY } from './consts';
 import styles from './lists.module.scss';
 
 const TABS = [
   { to: ROUTE.HOME, text: 'Collections' },
   { to: ROUTE.NFTS, text: 'NFTs' },
 ];
-
-const COLLECTION_SKELETONS = new Array<null>(6).fill(null);
 
 function Lists() {
   const { pathname } = useLocation();
@@ -27,12 +25,19 @@ function Lists() {
   const { gridSize, setGridSize } = useGridSize();
   const { accountFilterValue, accountFilterAddress, setAccountFilterValue } = useAccountFilter();
 
-  const { collections, isCollectionsQueryReady } = useCollections(accountFilterAddress);
-  const { nfts, isNFTsQueryReady, nftsCount, isMoreNFTs, fetchNFTs } = useNFTs(accountFilterAddress);
+  const [collections, isCollectionsQueryReady, collectionsCount, hasMoreCollections, fetchCollections] =
+    usePaginationQuery(COLLECTIONS_QUERY, { admin: accountFilterAddress }, 12, 'collectionsConnection');
+
+  const [nfts, isNFTsQueryReady, nftsCount, hasMoreNFTs, fetchNFTs] = usePaginationQuery(
+    NFTS_QUERY,
+    { owner: accountFilterAddress },
+    16,
+    'nftsConnection',
+  );
 
   const renderTabs = () =>
     TABS.map(({ to, text }, index) => {
-      const counter = [collections?.length, nftsCount][index];
+      const counter = [collectionsCount, nftsCount][index];
 
       return (
         <li key={to}>
@@ -55,13 +60,13 @@ function Lists() {
       </header>
 
       {match ? (
-        <LoadingList
+        <List
           items={nfts}
           itemsPerRow={gridSize === GRID_SIZE.SMALL ? 4 : 3}
           emptyText="Mint NFTs"
           renderItem={(nft) => <NFTCard key={nft.id} {...nft} />}
           fetchItems={fetchNFTs}
-          isMoreItems={isMoreNFTs}
+          isMoreItems={hasMoreNFTs}
           skeleton={{
             rowsCount: 2,
             isVisible: !isNFTsQueryReady,
@@ -76,20 +81,23 @@ function Lists() {
         />
       ) : (
         <List
-          items={isCollectionsQueryReady ? collections : COLLECTION_SKELETONS}
+          items={collections}
           itemsPerRow={gridSize === GRID_SIZE.SMALL ? 3 : 2}
           emptyText="Create collections"
-          renderItem={(collection, index) =>
-            collection ? (
-              <CollectionCard key={collection.id} {...collection} />
-            ) : (
+          renderItem={(collection) => <CollectionCard key={collection.id} {...collection} />}
+          fetchItems={fetchCollections}
+          isMoreItems={hasMoreCollections}
+          skeleton={{
+            rowsCount: 2,
+            isVisible: !isCollectionsQueryReady,
+            renderItem: (index) => (
               <li key={index}>
                 <Skeleton>
                   <CollectionCardSkeletonSVG />
                 </Skeleton>
               </li>
-            )
-          }
+            ),
+          }}
         />
       )}
     </Container>

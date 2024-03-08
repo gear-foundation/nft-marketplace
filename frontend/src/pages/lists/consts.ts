@@ -1,59 +1,73 @@
 import { graphql } from '@/graphql';
 
 const COLLECTIONS_QUERY = graphql(`
-  subscription CollectionsQuery($admin: String!) {
-    collections(where: { admin_contains: $admin }) {
-      id
-      name
-      description
-      collectionBanner
-      collectionLogo
-      admin
-      tokensLimit
-
-      nfts {
-        id
-        mediaUrl
-      }
-    }
-  }
-`);
-
-const NFTS_CONNECTION_QUERY = graphql(`
-  query NFTsConnectionQuery($owner: String!) {
-    nftsConnection(orderBy: createdAt_DESC_NULLS_LAST, where: { owner_contains: $owner }) {
+  query CollectionsQuery($first: Int!, $after: String, $admin: String!) {
+    collectionsConnection(orderBy: createdAt_DESC, first: $first, after: $after, where: { admin_contains: $admin }) {
       totalCount
+
+      pageInfo {
+        endCursor
+        hasNextPage
+      }
+
+      edges {
+        node {
+          id
+          name
+          description
+          collectionBanner
+          collectionLogo
+          admin
+          tokensLimit
+
+          nfts {
+            id
+            mediaUrl
+          }
+        }
+      }
     }
   }
 `);
 
 const NFTS_QUERY = graphql(`
-  subscription NFTsQuery($limit: Int, $offset: Int, $owner: String!) {
-    nfts(limit: $limit, offset: $offset, orderBy: createdAt_DESC_NULLS_LAST, where: { owner_contains: $owner }) {
-      id
-      idInCollection
-      name
-      mediaUrl
-      owner
+  query NFTsQuery($first: Int!, $after: String, $owner: String!) {
+    nftsConnection(orderBy: createdAt_DESC, first: $first, after: $after, where: { owner_contains: $owner }) {
+      totalCount
 
-      collection {
-        id
-        name
-        transferable
-        sellable
+      pageInfo {
+        endCursor
+        hasNextPage
       }
 
-      sales(where: { status_eq: "open" }) {
-        price
-      }
+      edges {
+        node {
+          id
+          idInCollection
+          name
+          mediaUrl
+          owner
 
-      auctions(where: { status_eq: "open" }) {
-        minPrice
-        lastPrice
-        endTimestamp
+          collection {
+            id
+            name
+            transferable
+            sellable
+          }
+
+          sales(where: { status_eq: "open" }) {
+            price
+          }
+
+          auctions(where: { status_eq: "open" }) {
+            minPrice
+            lastPrice
+            endTimestamp
+          }
+        }
       }
     }
   }
 `);
 
-export { COLLECTIONS_QUERY, NFTS_CONNECTION_QUERY, NFTS_QUERY };
+export { COLLECTIONS_QUERY, NFTS_QUERY };
