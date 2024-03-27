@@ -14,7 +14,7 @@ import styles from './collection-card.module.scss';
 type Props = Pick<Collection, 'id' | 'name' | 'collectionBanner' | 'collectionLogo' | 'admin' | 'tokensLimit'> & {
   nfts: Pick<Nft, 'id' | 'mediaUrl'>[];
 } & {
-  nftsCount: string | undefined;
+  nftsCount: number | undefined;
 };
 
 const PREVIEW_NFTS_COUNT = 5;

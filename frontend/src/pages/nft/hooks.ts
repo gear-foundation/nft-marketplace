@@ -1,10 +1,10 @@
-import { useSubscription } from '@apollo/client';
+import { useQuery, useSubscription } from '@apollo/client';
 
 import { NFT_QUERY } from './consts';
 
 function useNFT(collectionId: string, idInCollection: string) {
   const id = `${collectionId}-${idInCollection}`;
-  const { data } = useSubscription(NFT_QUERY, { variables: { id } });
+  const { data } = useQuery(NFT_QUERY, { variables: { id } });
 
   return data?.nftById;
 }

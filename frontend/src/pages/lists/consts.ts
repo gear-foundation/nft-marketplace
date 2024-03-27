@@ -28,7 +28,7 @@ const COLLECTIONS_QUERY = graphql(`
 `);
 
 const COLLECTIONS_SUBSCRIPTION = graphql(`
-  subscription CollectionsSub($limit: Int!, $offset: Int!, $where: CollectionWhereInput!) {
+  query CollectionsSub($limit: Int!, $offset: Int!, $where: CollectionWhereInput!) {
     collections(limit: $limit, offset: $offset, orderBy: [createdAt_DESC, name_DESC, id_DESC], where: $where) {
       id
       name
@@ -97,7 +97,7 @@ const NFTS_QUERY = graphql(`
 `);
 
 const NFTS_SUBSCRIPTION = graphql(`
-  subscription NFTsSubscription($limit: Int!, $offset: Int!, $where: NftWhereInput!) {
+  query NFTsSubscription($limit: Int!, $offset: Int!, $where: NftWhereInput!) {
     nfts(limit: $limit, offset: $offset, orderBy: [createdAt_DESC, name_DESC, id_DESC], where: $where) {
       id
       idInCollection

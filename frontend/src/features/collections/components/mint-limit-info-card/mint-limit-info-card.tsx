@@ -4,7 +4,7 @@ import LandscapeSVG from '../../assets/landscape.svg?react';
 
 type Props = Omit<InfoCardProps, 'heading' | 'text' | 'SVG'> & {
   heading: string | null | undefined;
-  text: string | number | undefined;
+  text: number | undefined;
 };
 
 function MintLimitInfoCard({ heading, text, ...props }: Props) {

@@ -14,7 +14,7 @@ const SOCIAL_ICON = {
 };
 
 const COLLECTION_SUBSCRIPTION = graphql(`
-  subscription CollectionSub($id: String!) {
+  query CollectionSub($id: String!) {
     collectionById(id: $id) {
       id
       name
