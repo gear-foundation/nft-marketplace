@@ -9,61 +9,72 @@ impl NftMarketplace {
         &mut self,
         collection_address: ActorId,
         token_id: u64,
+        msg_src: ActorId,
+        msg_value: u128,
     ) -> Result<NftMarketplaceEvent, NftMarketplaceError> {
-        let current_price = msg::value();
-        if current_price < self.config.minimum_transfer_value {
-            return Err(NftMarketplaceError(format!(
-                "The price must be greater than existential deposit ({})",
-                self.config.minimum_transfer_value
-            )));
+        self.check_allow_message(&msg_src)?;
+        if msg_value < self.minimum_value_for_trade {
+            return Err(NftMarketplaceError::LessThanMinimumValueForTrade);
         }
         if !self.collection_to_owner.contains_key(&collection_address) {
-            return Err(NftMarketplaceError(
-                "This collection address is not in the marketplace".to_owned(),
-            ));
+            return Err(NftMarketplaceError::WrongCollectionAddress);
         }
 
         let get_token_info_payload = NftAction::GetTokenInfo { token_id };
-        let reply = msg::send_with_gas_for_reply_as::<NftAction, Result<NftEvent, NftError>>(
+
+        let reply = match msg::send_with_gas_for_reply_as::<NftAction, Result<NftEvent, NftError>>(
             collection_address,
             get_token_info_payload,
-            self.config.gas_for_get_token_info,
+            self.config.gas_for_get_info,
             0,
             0,
-        )
-        .expect("Error during `NftAction::GetTokenInfo`")
-        .await
-        .expect("Problem with get token info");
+        ) {
+            Ok(future) => match future.await {
+                Ok(reply) => reply,
+                Err(_) => {
+                    return Err(NftMarketplaceError::ErrorGetInfo);
+                }
+            },
+            Err(_) => {
+                return Err(NftMarketplaceError::ErrorGetInfo);
+            }
+        };
 
         match reply {
-            Err(NftError(error_string)) => Err(NftMarketplaceError(error_string.clone())),
+            Err(_) => Err(NftMarketplaceError::ErrorFromCollection),
             Ok(NftEvent::TokenInfoReceived { sellable, .. }) => {
                 if !sellable {
-                    Err(NftMarketplaceError("Nft is not sellable".to_owned()))
+                    Err(NftMarketplaceError::NotSellable)
                 } else {
                     Ok(())
                 }
             }
-            _ => Err(NftMarketplaceError("Wrong received reply".to_owned())),
+            _ => Err(NftMarketplaceError::WrongReply),
         }?;
 
         let offer = Offer {
             collection_address,
             token_id,
-            creator: msg::source(),
+            creator: msg_src,
         };
         self.offers
             .entry(offer.clone())
             .and_modify(|price| {
-                msg::send_with_gas(offer.creator, "", 0, *price).expect("Error in sending value");
-                *price = current_price;
+                msg::send_with_gas(
+                    offer.creator,
+                    Ok::<NftMarketplaceEvent, NftMarketplaceError>(NftMarketplaceEvent::ValueSent),
+                    0,
+                    *price,
+                )
+                .expect("Error in sending value");
+                *price = msg_value;
             })
-            .or_insert(current_price);
+            .or_insert(msg_value);
 
         Ok(NftMarketplaceEvent::OfferCreated {
             collection_address,
             token_id,
-            price: current_price,
+            price: msg_value,
         })
     }
 
@@ -72,19 +83,25 @@ impl NftMarketplace {
         collection_address: ActorId,
         token_id: u64,
     ) -> Result<NftMarketplaceEvent, NftMarketplaceError> {
+        let msg_src = msg::source();
+        self.check_allow_message(&msg_src)?;
         let offer = Offer {
             collection_address,
             token_id,
-            creator: msg::source(),
+            creator: msg_src,
         };
 
         if let Some((offer, price)) = self.offers.get_key_value(&offer) {
             // use send_with_gas to transfer the value directly to the balance, not to the mailbox.
-            msg::send_with_gas(offer.creator, "", 0, *price).expect("Error in sending value");
+            msg::send_with_gas(
+                offer.creator,
+                Ok::<NftMarketplaceEvent, NftMarketplaceError>(NftMarketplaceEvent::ValueSent),
+                0,
+                *price,
+            )
+            .expect("Error in sending value");
         } else {
-            return Err(NftMarketplaceError(
-                "This offer does not exist or you are not the creator of the offer".to_owned(),
-            ));
+            return Err(NftMarketplaceError::WrongDataOffer);
         }
         self.offers.remove(&offer);
 
@@ -98,34 +115,30 @@ impl NftMarketplace {
         &mut self,
         offer: Offer,
     ) -> Result<NftMarketplaceEvent, NftMarketplaceError> {
+        let msg_src = msg::source();
+        self.check_allow_message(&msg_src)?;
         if self
             .sales
             .contains_key(&(offer.collection_address, offer.token_id))
         {
-            return Err(NftMarketplaceError(
-                "This token is on sale, cancel the sale if you wish to accept the offer".to_owned(),
-            ));
+            return Err(NftMarketplaceError::AlreadyOnSale);
         }
         if self
             .auctions
             .contains_key(&(offer.collection_address, offer.token_id))
         {
-            return Err(NftMarketplaceError(
-                "This token is on auction, cancel the auction if you wish to accept the offer"
-                    .to_owned(),
-            ));
+            return Err(NftMarketplaceError::AlreadyOnAuction);
         }
         if !self.offers.contains_key(&offer) {
-            return Err(NftMarketplaceError("This offer does not exist".to_owned()));
+            return Err(NftMarketplaceError::OfferDoesNotExist);
         }
 
         // check token info
         let address_marketplace = exec::program_id();
-        let msg_src = msg::source();
         let (collection_owner, royalty) = check_token_info(
             &offer.collection_address,
             offer.token_id,
-            self.config.gas_for_get_token_info,
+            self.config.gas_for_get_info,
             &msg_src,
             &address_marketplace,
         )
@@ -148,7 +161,7 @@ impl NftMarketplace {
             msg_src,
             *price,
             royalty,
-            self.config.minimum_transfer_value,
+            self.config.royalty_to_marketplace_for_trade,
         );
 
         self.offers.remove(&offer);

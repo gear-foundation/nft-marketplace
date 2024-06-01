@@ -5,7 +5,6 @@ members = [
     "nft",
     "composable-nft",
     "music-nft",
-
 ]
 
 [package]
@@ -16,7 +15,7 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
-gstd.workspace = true
+gstd = { workspace = true, features = ["debug"] }
 hashbrown = "0.13"
 parity-scale-codec.workspace = true
 scale-info.workspace = true
@@ -55,13 +54,13 @@ license = "MIT"
 authors = ["Gear Technologies"]
 
 [workspace.dependencies]
-gstd = { git = "https://github.com/gear-tech/gear", tag = "v1.0.2" }
-gear-wasm-builder = { git = "https://github.com/gear-tech/gear", tag = "v1.0.2" }
-gmeta = { git = "https://github.com/gear-tech/gear", tag = "v1.0.2" }
-gclient = { git = "https://github.com/gear-tech/gear", tag = "v1.0.2" }
-gtest = { git = "https://github.com/gear-tech/gear"}
-gear-core = { git = "https://github.com/gear-tech/gear", tag = "v1.0.2" }
-gcore = { git = "https://github.com/gear-tech/gear", tag = "v1.0.2" }
+gstd = "1.1.0"
+gear-wasm-builder = "1.1.0"
+gmeta = "1.1.0"
+gclient = "1.1.0"
+gtest = { git = "https://github.com/gear-tech/gear", tag = "v1.1.0" }
+gear-core = "1.1.0"
+gcore = "1.1.0"
 primitive-types = { version = "0.12", default-features = false }
 nft-marketplace-io = { path = "io" }
 nft-io = { path = "nft/io" }

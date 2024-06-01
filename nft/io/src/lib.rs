@@ -5,9 +5,8 @@ use gstd::{prelude::*, ActorId};
 pub type NftId = u64;
 pub type TimeSec = u32;
 
-pub const BLOCK_DURATION_IN_SECS: u32 = 3;
-pub const EXISTENTIAL_DEPOSIT: u128 = 10_000_000_000_000;
-pub const GAS_AUTO_CHANGING: u64 = 5_000_000_000;
+pub const FEE_PER_UPLOADED_FILE: u128 = 282_857_142_900;
+pub const MAX_CREATOR_ROYALTY: u16 = 1_000; // 10%
 
 pub struct ContractMetadata;
 
@@ -25,18 +24,12 @@ pub struct NftInit {
     pub collection_owner: ActorId,
     pub config: Config,
     pub img_links_and_data: Vec<(String, ImageData)>,
+    pub permission_to_mint: Option<Vec<ActorId>>,
 }
 
 #[derive(Debug, Clone, Encode, Decode, TypeInfo)]
 pub struct ImageData {
     pub limit_copies: Option<u32>,
-    pub auto_changing_rules: Option<Vec<(TimeSec, Action)>>,
-}
-
-#[derive(Debug, Clone, Encode, Decode, TypeInfo)]
-pub enum Action {
-    ChangeImg(String),
-    AddMeta(String),
 }
 
 #[derive(Debug, Clone, Encode, Decode, TypeInfo)]
@@ -52,6 +45,7 @@ pub struct Config {
     pub payment_for_mint: u128,
     pub transferable: Option<u64>,
     pub sellable: Option<u64>,
+    pub variable_meta: bool,
 }
 
 #[derive(Debug, Clone, Encode, Decode, TypeInfo)]
@@ -78,7 +72,10 @@ pub enum NftAction {
         token_id: NftId,
     },
     CanDelete,
-    Mint,
+    GetPaymentForMint,
+    Mint {
+        minter: ActorId,
+    },
     Approve {
         to: ActorId,
         token_id: NftId,
@@ -92,13 +89,33 @@ pub enum NftAction {
     ChangeConfig {
         config: Config,
     },
-    ChangeImg {
-        token_id: NftId,
-        img_link: String,
+    AddUsersForMint {
+        users: Vec<ActorId>,
+    },
+    DeleteUserForMint {
+        user: ActorId,
+    },
+    LiftRestrictionMint,
+    AddAdmin {
+        admin: ActorId,
+    },
+    RemoveAdmin {
+        admin: ActorId,
     },
     AddMetadata {
-        token_id: NftId,
+        nft_id: u64,
         metadata: String,
+    },
+    ChangeImageLink {
+        nft_id: u64,
+        img_link: String,
+    },
+    ChangeMetadata {
+        nft_id: u64,
+        metadata: Vec<String>,
+    },
+    DeleteMetadata {
+        nft_id: u64,
     },
 }
 
@@ -117,12 +134,18 @@ pub enum NftEvent {
         royalty: u16,
     },
     CanDelete(bool),
-    Initialized {
-        config: Config,
+    PaymentForMintReceived {
+        payment_for_mint: u128,
     },
+    SuccessfullyMinted,
     Minted {
         token_id: NftId,
         nft_data: Nft,
+    },
+    Initialized {
+        config: Config,
+        total_number_of_tokens: Option<u64>,
+        permission_to_mint: Option<Vec<ActorId>>,
     },
     Approved {
         to: ActorId,
@@ -133,21 +156,62 @@ pub enum NftEvent {
     },
     Expanded {
         additional_links: Vec<(String, ImageData)>,
+        total_number_of_tokens: Option<u64>,
     },
     ConfigChanged {
         config: Config,
     },
-    ImageChanged {
-        token_id: NftId,
+    UsersForMintAdded {
+        users: Vec<ActorId>,
+    },
+    UserForMintDeleted {
+        user: ActorId,
+    },
+    LiftRestrictionMint,
+    AdminAdded {
+        admin: ActorId,
+    },
+    AdminRemoved {
+        admin: ActorId,
+    },
+    ValueSent,
+    MetadataAdded {
+        nft_id: u64,
+        metadata: String,
+    },
+    ImageLinkChanged {
+        nft_id: u64,
         img_link: String,
     },
-    MetadataAdded {
-        token_id: NftId,
-        metadata: String,
+    MetadataChanged {
+        nft_id: u64,
+        metadata: Vec<String>,
+    },
+    MetadataDeleted {
+        nft_id: u64,
     },
 }
 #[derive(Debug, Clone, Encode, Decode, TypeInfo)]
-pub struct NftError(pub String);
+pub enum NftError {
+    MathOverflow,
+    ErrorGettingRandom,
+    TokenDoesNotExist,
+    AllTokensMinted,
+    OwnerDoesNotHaveNft,
+    AccessDenied,
+    NoApproval,
+    ThereIsApproval,
+    LimitIsZero,
+    ConfigCannotBeChanged,
+    WrongRoyalty,
+    NotTransferable,
+    UserRestrictionCannotBeChanged,
+    NoListOfRestriction,
+    ThereIsNoSuchUser,
+    ExhaustedLimit,
+    WrongValue,
+    OnlyOneAdminLeft,
+}
 
 #[derive(Debug, Clone, Encode, Decode, TypeInfo)]
 pub struct NftState {
@@ -159,6 +223,9 @@ pub struct NftState {
     pub img_links_and_data: Vec<(String, ImageData)>,
     pub collection_owner: ActorId,
     pub total_number_of_tokens: Option<u64>,
+    pub permission_to_mint: Option<Vec<ActorId>>,
+    pub marketplace_address: ActorId,
+    pub admins: Vec<ActorId>,
 }
 
 #[derive(Debug, Clone, Encode, Decode, TypeInfo)]
